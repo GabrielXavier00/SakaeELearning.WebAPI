@@ -1,0 +1,6 @@
+@SakaeELearning.WebAPI_HostAddress = http://localhost:5259
+
+GET {{SakaeELearning.WebAPI_HostAddress}}/weatherforecast/
+Accept: application/json
+
+###
