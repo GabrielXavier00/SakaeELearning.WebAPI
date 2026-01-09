@@ -88,14 +88,14 @@ var app = builder.Build();
 // PIPELINE
 // ========================================
 
-if (app.Environment.IsDevelopment())
+// Habilitar Swagger em todos os ambientes (incluindo Produção) para facilitar debug
+app.UseSwagger();
+app.UseSwaggerUI(options =>
 {
-    app.UseSwagger();
-    app.UseSwaggerUI(options =>
-    {
-        options.SwaggerEndpoint("/swagger/v1/swagger.json", "Sakae E-Learning API v1");
-    });
-}
+    options.SwaggerEndpoint("/swagger/v1/swagger.json", "Sakae E-Learning API v1");
+    // Opcional: Se quiser que o Swagger abra na raiz, descomente abaixo:
+    // options.RoutePrefix = string.Empty;
+});
 
 // CORS deve vir ANTES de Authentication/Authorization
 app.UseCors("FrontendPolicy");
@@ -123,4 +123,6 @@ app.MapPost("/logout", async (SignInManager<User> signInManager) =>
     return Results.Ok(new { success = true, message = "Logout realizado!" });
 }).RequireAuthorization().WithTags("Identity Auth");
 
-app.Run();
+// Bind dinâmico da porta para suportar o Railway (variável PORT)
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+app.Run($"http://0.0.0.0:{port}");
