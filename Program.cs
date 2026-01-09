@@ -1,27 +1,76 @@
+using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using SakaeELearning.WebAPI.Data;
 using SakaeELearning.WebAPI.Models;
-using System.Security.Claims;
 
 var builder = WebApplication.CreateBuilder(args);
 
-//DB - Database
-builder
-    .Services.AddDbContext<AppDbContext>(
-    options=> options
-    .UseSqlServer(builder.Configuration
-    .GetConnectionString("DefaultConnection")));
+// ========================================
+// SERVIÇOS
+// ========================================
 
-//builder.Services.AddAuthentication();
-builder
-    .Services
-    .AddAuthorization();
+// Database
+// Database
+var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+var dbPassword = Environment.GetEnvironmentVariable("DB_PASSWORD");
 
+if (!string.IsNullOrEmpty(connectionString) && connectionString.Contains("{password}"))
+{
+    if (string.IsNullOrEmpty(dbPassword))
+    {
+         throw new InvalidOperationException("DB_PASSWORD environment variable is not set.");
+    }
+    connectionString = connectionString.Replace("{password}", dbPassword);
+}
+
+builder.Services.AddDbContext<AppDbContext>(options =>
+    options.UseSqlServer(connectionString ?? builder.Configuration.GetConnectionString("DefaultConnection")));
+
+// Identity com endpoints de API (login, register, etc)
 builder.Services
-    .AddIdentityApiEndpoints<User>()
+    .AddIdentityApiEndpoints<User>(options => 
+    {
+        // Configurações de Senha
+        options.Password.RequireDigit = false;
+        options.Password.RequireLowercase = false;
+        options.Password.RequireNonAlphanumeric = false;
+        options.Password.RequireUppercase = false; 
+        options.Password.RequiredLength = 6; 
+
+        // Configurações de Login
+        options.SignIn.RequireConfirmedEmail = false;
+        options.SignIn.RequireConfirmedAccount = false; // CRUCIAL para login funcionar sem email sender
+
+        // Configurações de Usuário
+        options.User.RequireUniqueEmail = true;
+    })
     .AddEntityFrameworkStores<AppDbContext>();
 
+builder.Services.AddAuthorization();
+
+// CORS - Permite o frontend acessar a API
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("FrontendPolicy", policy =>
+    {
+        policy.WithOrigins(
+                "http://localhost:3000",    // Vite dev server
+                "http://localhost:5173",    // Vite alternativo
+                "http://localhost:4173",    // Vite preview (production build)
+                "http://127.0.0.1:3000",
+                "https://sakae-e-learning-wh4qw.ondigitalocean.app" // Production
+            )
+            .AllowAnyHeader()
+            .AllowAnyMethod()
+            .AllowCredentials();  // Necessário para cookies/tokens
+    });
+});
+
+// Controllers
+builder.Services.AddControllers();
+
+// Swagger
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
 {
@@ -33,15 +82,12 @@ builder.Services.AddSwaggerGen(options =>
     });
 });
 
-// Add services to the container.
-
-builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-
-
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// ========================================
+// PIPELINE
+// ========================================
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -51,14 +97,30 @@ if (app.Environment.IsDevelopment())
     });
 }
 
-app.MapGet("/", (ClaimsPrincipal user) => user.Identity!.Name)
-    .RequireAuthorization();
+// CORS deve vir ANTES de Authentication/Authorization
+app.UseCors("FrontendPolicy");
 
-app.MapIdentityApi<User>();
-
+app.UseAuthentication();
 app.UseAuthorization();
 
+// Endpoints nativos do Identity (register, login, refresh, etc)
+app.MapIdentityApi<User>().WithTags("Identity Auth");
+
+// Controllers
 app.MapControllers();
 
-app.Run();
+// ========================================
+// MINIMAL APIs CUSTOMIZADAS
+// ========================================
 
+// Rota de teste
+app.MapGet("/", () => "Sakae E-Learning API is running!");
+
+// Logout (Minimal API)
+app.MapPost("/logout", async (SignInManager<User> signInManager) =>
+{
+    await signInManager.SignOutAsync();
+    return Results.Ok(new { success = true, message = "Logout realizado!" });
+}).RequireAuthorization().WithTags("Identity Auth");
+
+app.Run();

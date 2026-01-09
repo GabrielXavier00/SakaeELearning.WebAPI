@@ -2,8 +2,21 @@
 
 namespace SakaeELearning.WebAPI.Models
 {
-    public class User : IdentityUser
+    /// <summary>
+    /// Usuário do sistema. Herda de IdentityUser para autenticação.
+    /// - Id (int): chave primária
+    /// - UserName: nome de exibição
+    /// - Email: usado para login
+    /// </summary>
+    public class User : IdentityUser<int>
     {
-        public string Document { get; set; } = string.Empty;
+        // Propriedades herdadas do IdentityUser<int>:
+        // - Id (int)
+        // - UserName → nome de exibição
+        // - Email → login
+        // - PasswordHash, SecurityStamp, etc.
+
+        public bool IsActive { get; set; } = true;
+        public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
     }
 }
