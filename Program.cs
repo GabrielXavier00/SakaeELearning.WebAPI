@@ -3,6 +3,12 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.OpenApi.Models;
 using SakaeELearning.WebAPI.Data;
 using SakaeELearning.WebAPI.Models;
+using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.IdentityModel.Tokens;
+using SakaeELearning.WebAPI.Configurations;
+using SakaeELearning.WebAPI.Services;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -49,6 +55,42 @@ builder.Services
 
 builder.Services.AddAuthorization();
 
+// JWT Settings
+builder.Services.Configure<JwtSettings>(builder.Configuration.GetSection("JwtSettings"));
+builder.Services.AddScoped<ITokenService, TokenService>();
+
+var jwtSettings = builder.Configuration.GetSection("JwtSettings").Get<JwtSettings>();
+var key = Encoding.ASCII.GetBytes(jwtSettings?.Secret ?? "default_secret_key");
+
+builder.Services.AddAuthentication(options =>
+    {
+        options.DefaultAuthenticateScheme = JwtBearerDefaults.AuthenticationScheme;
+        options.DefaultChallengeScheme = JwtBearerDefaults.AuthenticationScheme;
+    })
+    .AddCookie("ExternalCookie")
+    .AddJwtBearer(options =>
+    {
+        options.RequireHttpsMetadata = false;
+        options.SaveToken = true;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(key),
+            ValidateIssuer = true,
+            ValidIssuer = jwtSettings?.Issuer,
+            ValidateAudience = true,
+            ValidAudience = jwtSettings?.Audience,
+            ValidateLifetime = true,
+            ClockSkew = TimeSpan.Zero
+        };
+    })
+    .AddGoogle(options =>
+    {
+        options.SignInScheme = "ExternalCookie";
+        options.ClientId = builder.Configuration["Authentication:Google:ClientId"] ?? Environment.GetEnvironmentVariable("GOOGLE_CLIENT_ID") ?? "YOUR_CLIENT_ID";
+        options.ClientSecret = builder.Configuration["Authentication:Google:ClientSecret"] ?? Environment.GetEnvironmentVariable("GOOGLE_CLIENT_SECRET") ?? "YOUR_CLIENT_SECRET";
+    });
+
 // CORS - Permite o frontend acessar a API
 builder.Services.AddCors(options =>
 {
@@ -56,7 +98,10 @@ builder.Services.AddCors(options =>
     {
         policy.WithOrigins(
                 "http://localhost:3000",    // Vite dev server
-                "http://localhost:5173",    // Vite alternativo
+                "http://localhost:3001",    // Vite alternate
+                "http://localhost:3002",    // Vite alternate 2
+                "http://localhost:5173",    // Vite standard
+                "http://localhost:5174",    // Vite alternate
                 "http://localhost:4173",    // Vite preview (production build)
                 "http://127.0.0.1:3000",
                 "https://sakae-e-learning-wh4qw.ondigitalocean.app" // Production
@@ -104,7 +149,7 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 // Endpoints nativos do Identity (register, login, refresh, etc)
-app.MapIdentityApi<User>().WithTags("Identity Auth");
+// app.MapIdentityApi<User>().WithTags("Identity Auth");
 
 // Controllers
 app.MapControllers();
@@ -117,12 +162,12 @@ app.MapControllers();
 app.MapGet("/", () => "Sakae E-Learning API is running!");
 
 // Logout (Minimal API)
-app.MapPost("/logout", async (SignInManager<User> signInManager) =>
-{
-    await signInManager.SignOutAsync();
-    return Results.Ok(new { success = true, message = "Logout realizado!" });
-}).RequireAuthorization().WithTags("Identity Auth");
+// app.MapPost("/logout", async (SignInManager<User> signInManager) =>
+// {
+//     await signInManager.SignOutAsync();
+//     return Results.Ok(new { success = true, message = "Logout realizado!" });
+// }).RequireAuthorization().WithTags("Identity Auth");
 
 // Bind dinâmico da porta para suportar o Railway (variável PORT)
-var port = Environment.GetEnvironmentVariable("PORT") ?? "8080";
+var port = Environment.GetEnvironmentVariable("PORT") ?? "8081";
 app.Run($"http://0.0.0.0:{port}");
