@@ -5,10 +5,6 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <AssemblyName>SakaeELearning.WebAPI_V3</AssemblyName>
-    <OutputPath>bin_v3\Debug\net8.0\</OutputPath>
-    <BaseIntermediateOutputPath>obj_v3\</BaseIntermediateOutputPath>
-    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
-    <GenerateTargetFrameworkAttribute>false</GenerateTargetFrameworkAttribute>
     <DefaultItemExcludes>$(DefaultItemExcludes);SakaeElearning\**</DefaultItemExcludes>
   </PropertyGroup>
 

@@ -21,4 +21,4 @@ EXPOSE 8080
 ENV ASPNETCORE_HTTP_PORTS=8080
 ENV GEMINI_API_KEY=""
 
-ENTRYPOINT ["dotnet", "SakaeELearning.WebAPI.dll"]
+ENTRYPOINT ["dotnet", "SakaeELearning.WebAPI_V3.dll"]
