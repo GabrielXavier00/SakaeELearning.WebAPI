@@ -19,5 +19,6 @@ COPY --from=build /app/out .
 # Expose port 8080 (default for .NET 8)
 EXPOSE 8080
 ENV ASPNETCORE_HTTP_PORTS=8080
+ENV GEMINI_API_KEY=""
 
 ENTRYPOINT ["dotnet", "SakaeELearning.WebAPI.dll"]
