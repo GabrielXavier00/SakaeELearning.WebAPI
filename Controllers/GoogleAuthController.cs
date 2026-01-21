@@ -29,10 +29,14 @@ namespace SakaeELearning.WebAPI.Controllers
         /// Iniciar login com Google
         /// </summary>
         [HttpGet("login")]
-        public IActionResult Login()
+        public IActionResult Login(string returnUrl = null)
         {
-            // O callback deve corresponder exatamente à rota definida abaixo
-            var properties = new AuthenticationProperties { RedirectUri = "/api/v1/auth/google/callback" };
+            // Salvar a URL de retorno no state para recuperar no callback
+            var properties = new AuthenticationProperties
+            {
+                RedirectUri = "/api/v1/auth/google/callback",
+                Items = { { "returnUrl", returnUrl ?? _configuration["FrontendUrl"] ?? "http://localhost:3002" } }
+            };
             return Challenge(properties, "Google");
         }
 
@@ -77,13 +81,15 @@ namespace SakaeELearning.WebAPI.Controllers
             var token = _tokenService.GenerateToken(user);
             await HttpContext.SignOutAsync("ExternalCookie");
 
-            // Redirect to Frontend with Token - Dynamic URL based on Origin
-            var origin = HttpContext.Request.Headers["Origin"].FirstOrDefault()
-                      ?? HttpContext.Request.Headers["Referer"].FirstOrDefault()
-                      ?? _configuration["FrontendUrl"];
+            // Recuperar a URL de retorno salva no state do login
+            var frontendUrl = result.Properties?.Items?.GetValueOrDefault("returnUrl")
+                            ?? HttpContext.Request.Headers["Origin"].FirstOrDefault()
+                            ?? HttpContext.Request.Headers["Referer"].FirstOrDefault()
+                            ?? _configuration["FrontendUrl"]
+                            ?? "http://localhost:3002";
 
             // Extract base URL from origin (remove path if present)
-            var frontendUrl = origin?.Split('?')[0]?.Split('#')[0];
+            frontendUrl = frontendUrl?.Split('?')[0]?.Split('#')[0];
             if (string.IsNullOrEmpty(frontendUrl))
                 frontendUrl = "http://localhost:3002";
 
