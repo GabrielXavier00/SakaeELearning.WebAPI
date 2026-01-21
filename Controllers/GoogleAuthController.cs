@@ -77,8 +77,16 @@ namespace SakaeELearning.WebAPI.Controllers
             var token = _tokenService.GenerateToken(user);
             await HttpContext.SignOutAsync("ExternalCookie");
 
-            // Redirect to Frontend with Token - URL from config
-            var frontendUrl = _configuration["FrontendUrl"] ?? "http://localhost:3002";
+            // Redirect to Frontend with Token - Dynamic URL based on Origin
+            var origin = HttpContext.Request.Headers["Origin"].FirstOrDefault()
+                      ?? HttpContext.Request.Headers["Referer"].FirstOrDefault()
+                      ?? _configuration["FrontendUrl"];
+
+            // Extract base URL from origin (remove path if present)
+            var frontendUrl = origin?.Split('?')[0]?.Split('#')[0];
+            if (string.IsNullOrEmpty(frontendUrl))
+                frontendUrl = "http://localhost:3002";
+
             return Redirect($"{frontendUrl}/#/google-callback?token={token}");
         }
     }
