@@ -104,7 +104,8 @@ builder.Services.AddCors(options =>
                 "http://localhost:5174",    // Vite alternate
                 "http://localhost:4173",    // Vite preview (production build)
                 "http://127.0.0.1:3000",
-                "https://sakae-e-learning-wh4qw.ondigitalocean.app" // Production
+                "https://sakae-e-learning-wh4qw.ondigitalocean.app/", // Production DigitalOcean
+                "https://sakae-e-learning-v3.onrender.com/" // Production Render
             )
             .AllowAnyHeader()
             .AllowAnyMethod()
